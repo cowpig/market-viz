@@ -67,4 +67,7 @@ const tests = {
 	},
 }
 
-Object.keys(tests).forEach((test_name) => tests[test_name]())
+Object.keys(tests).forEach((test_name) => {
+	tests[test_name]()
+	console.log('✓', test_name)
+})

@@ -67,7 +67,7 @@ class MarketIteration{
 	total_surplus() {
 		return this.sales.reduce((total, sale) => {
 			return total + sale.total_surplus()
-		})
+		}, 0)
 	}
 
 	sales_by_producer_id() {
@@ -99,7 +99,10 @@ const naive_sales = ({consumers, widgets}) => {
 		const last_widget = sorted_widgets.pop()
 
 		if (last_widget.price <= consumer.max_price) {
-			sales.push({consumer: consumer, widget: last_widget})
+			sales.push(new Sale({
+				consumer: consumer,
+				widget: last_widget
+			}))
 		} else {
 			sorted_widgets.push(last_widget)
 		}
