@@ -86,10 +86,10 @@ const naive_sales = ({consumers, widgets}) => {
 	// consumers act in a random order, picking the cheapest
 	//	available widget, and buying it if it is below their max
 	
+	// most expensive first, so pop() returns least expensive
 	const sorted_widgets = Object.values(widgets).sort((w1, w2) => {
-		return w2.prices - w1.price
+		return w2.price - w1.price
 	})
-
 	const shuffled_consumers = Object.values(consumers)
 	shuffle_inplace(shuffled_consumers)
 
@@ -98,7 +98,7 @@ const naive_sales = ({consumers, widgets}) => {
 	shuffled_consumers.forEach((consumer) => {
 		const last_widget = sorted_widgets.pop()
 
-		if (last_widget.price < consumer.max_price) {
+		if (last_widget.price <= consumer.max_price) {
 			sales.push({consumer: consumer, widget: last_widget})
 		} else {
 			sorted_widgets.push(last_widget)

@@ -32,8 +32,8 @@ const tests = {
 
 		let sales = naive_sales({consumers, widgets})
 
-		// there's a widget <= 0.4 price for every consumer
-		assertEqual(sales.length, 5) 
+		// there are four widgets <= 0.4 price
+		assertEqual(sales.length, 4) 
 
 		consumers = [
 			new Consumer({id: 11, max_price: 0.25}),
