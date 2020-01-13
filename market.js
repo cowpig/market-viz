@@ -196,7 +196,15 @@ class Marketplace{
 	}
 }
 
-export { Marketplace, rand }
+export { 
+	Marketplace, 
+	Consumer, 
+	Producer, 
+	Widget, 
+	Sale, 
+	rand, 
+	naive_sales,
+}
 
 // new_inventory(market_iteration, pricing_strategy) {
 // 	market_iteration.sales.forEach((sale) => {
