@@ -14,6 +14,11 @@ const shuffle_inplace = (array) => {
 	}
 }
 
+const wiggle = (n, amt) => {
+	const m = amt === null ? 0.1 : amt
+	n + rand(-m, m) * n
+}
+
 class Consumer{
 	constructor({id, max_price}) {
 		this.id = id
@@ -111,8 +116,62 @@ const naive_sales = ({consumers, widgets}) => {
 	return sales
 }
 
-const naive_pricing = ({}) => {
-	return 'TODO'
+const producer_sales_summary = ({widgets, sales}) => {
+	const producer_data = {}
+	widgets.forEach(widget => {
+		const producer = widget.producer
+		const pid = producer.id
+		producer_data[pid] = producer_data[pid] || {
+			producer: producer,
+			widgets: [],
+			sales: [],
+		}
+		producer_data[pid]['widgets'].push(widget)
+	})
+
+	sales.forEach(sale => {
+		const pid = sale.widget.producer.id
+		producer_data[pid]['sales'].push(sale)
+	})
+
+	return producer_data
+}
+
+const naive_pricing = ({widgets, sales, next_id}) => {
+	// for each producer, create a new inventory
+	let id = next_id
+
+
+	const producer_data = producer_sales_summary({widgets, sales})
+	const new_widgets = []
+
+	Object.values(producer_data).forEach(producer_sales => {
+		const {producer, widgets, sales} = producer_sales
+
+		let new_price = widgets[0].price
+
+		// if all widgets sold, raise prices
+		if (widgets.length === sales.length) {
+			new_price = Math.min(1.0, new_price + 0.01)
+		// if no widgets sold, lower prices
+		} else if (sales.length === 0) {
+			new_price = Math.max(producer.min_price, new_price - 0.01)
+		}
+
+		// if a producer is down to minimum price, limit production
+		const new_n = new_price === producer.min_price ? 
+						sales.length : widgets.length
+
+		for (let i=new_n; i>0; i--) {
+			new_widgets.push(new Widget({
+				producer: producer,
+				price: new_price,
+				id: next_id++,
+			}))
+		}
+	})
+
+	return new_widgets
 }
 
 class Marketplace{
@@ -157,7 +216,9 @@ class Marketplace{
 		}
 
 		Object.values(this.producers).forEach((producer) => {
-			const price = rand(producer.min_price, 1)
+			// default to value-based pricing @ 25% markup
+			//	wiggle adds +/- 10%
+			const price = Math.min(wiggle(producer.min_price * 1.25), 1)
 			stop = this.idx + widgets_per_producer
 			for (; this.idx < stop; this.idx++) {
 				this.index[this.idx] = new Widget({
@@ -207,66 +268,6 @@ export {
 	Sale, 
 	rand, 
 	naive_sales,
+	naive_pricing,
 }
 
-// new_inventory(market_iteration, pricing_strategy) {
-// 	market_iteration.sales.forEach((sale) => {
-// 		producer_sales[]
-// 	})
-// }
-
-// const make_sales_naive = (consumers, producers) => {
-// 	// shuffle before calling this fntion
-// 	return consumers.map((consumer, i) => {
-// 		Sale(consumer, producers[i % producers.length])
-// 	})
-// }
-
-// const market_adjusted_producers = (producers) => {
-// 	// producers adjust their prices.
-// 	// producers who can't make sales or lower prices exit the market
-
-// 	const adjusted_producers = []
-
-// 	producers.forEach((producer) => {
-// 		const new_price = producer.new_price()
-// 		if (new_price !== null) {
-// 			producer.price = new_price
-// 			adjusted_producers.push(producer)
-// 		}
-// 	})
-
-// 	return adjusted_producers
-// }
-
-// const simul = (consumers, producers, iters) => {
-// 	let all_participants = [...consumers, ...producers]
-// 	const n_consumers = consumers.length
-// 	const n_producers = producers.length
-
-// 	for (let i = 0; i < iters; i++) {
-// 		match_sales(consumers, producers)
-// 		producers = market_adjusted_producers(producers)
-// 	}
-
-// 	return [consumers, producers, all_participants]
-// }
-
-// const main = (market_size, iters) => {
-// 	let consumers = []
-// 	let producers = []
-// 	for (let i = 0; i < market_size; i++) {
-// 		// consumers and producers with uniform price distribution
-// 		consumers.push(new Consumer(rand(0.1, 0.9)))
-// 		producers.push(new Producer(rand(0.1, 0.9)))
-// 	}
-// 	consumers, producers, everyone = simul(consumers, producers, iters)
-
-// 	const total_surplus = everyone.map(
-
-// 	)
-// 	console.log('\nConsumer surplus\n', )
-// 	console.log('\nPRODUCERS\n', producers)
-// }
-
-// main(5, 100)
