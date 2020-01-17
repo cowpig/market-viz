@@ -19,6 +19,11 @@ const assertAlmostEqual = (actual, expected) => {
 	)
 }
 
+const sumof = (prop) => (sum, obj) => {
+	// this works because null + 1 === 1
+	return sum + obj[prop]
+}
+
 // test assets
 
 const producers_01_to_03 = [
@@ -72,9 +77,7 @@ const tests = {
 		assertEqual(sales.length, 3) 
 	},
 	test_naive_pricing(){
-		const sum_of_prices = (sum, widget) => sum + widget.price
 		const widgets = widgets_1_to_9
-
 
 		// test with no sales
 		let sales = []
@@ -84,8 +87,8 @@ const tests = {
 		assertEqual(new_inv_nosales.length, widgets_1_to_9.length - 3)
 		
 		//	the rest reduce their prices by 0.01
-		let total_price = new_inv_nosales.reduce(sum_of_prices, 0)
-		let original_price = widgets.slice(3).reduce(sum_of_prices, 0)
+		let total_price = new_inv_nosales.reduce(sumof('price'), 0)
+		let original_price = widgets.slice(3).reduce(sumof('price'), 0)
 		assertAlmostEqual(original_price - total_price, 0.01 * 6)
 
 
@@ -98,8 +101,8 @@ const tests = {
 		assertEqual(new_inv_6_sales.length, widgets_1_to_9.length)
 
 		// first two producers raise prices by 0.01, last lowers prices
-		total_price = new_inv_6_sales.reduce(sum_of_prices, 0)
-		original_price = widgets.reduce(sum_of_prices, 0)
+		total_price = new_inv_6_sales.reduce(sumof('price'), 0)
+		original_price = widgets.reduce(sumof('price'), 0)
 		assertAlmostEqual(original_price - total_price, -0.01 * 3)
 
 
@@ -112,24 +115,63 @@ const tests = {
 		assertEqual(new_inv_5_sales.length, widgets_1_to_9.length)
 
 		// one producer raises prices and another lowers prices
-		total_price = new_inv_5_sales.reduce(sum_of_prices, 0)
-		original_price = widgets.reduce(sum_of_prices, 0)
+		total_price = new_inv_5_sales.reduce(sumof('price'), 0)
+		original_price = widgets.reduce(sumof('price'), 0)
 		assertAlmostEqual(original_price - total_price, 0)
 	},
-	test_marketplace_defaults() {
+	test_marketplace_default() {
+		const n_cons = 10
+		const n_prod = 10
+		const w_per_p = 1
 		const market = new Marketplace({
-			n_consumers: 100,
-			n_producers: 10, 
-			widgets_per_producer: 10,
+			n_consumers: n_cons,
+			n_producers: n_prod, 
+			widgets_per_producer: w_per_p,
 		})
+		const n_widg = n_prod * w_per_p
 
-		assertEqual(Object.values(market.widgets).length, 10 * 10)
+		assertEqual(Object.values(market.widgets).length, n_widg)
 		assertEqual(market.market_iterations.length, 1)
+
+		const start_widgets = Object.values(market.widgets)
+		const start_producers = Object.values(market.producers)
+
+		const widget_prices = start_widgets.reduce(sumof('price'), 0)
+		const producer_prices = start_producers.reduce(sumof('min_price'), 0)
+
+		assert(
+			widget_prices >= n_widg * 0.25,
+			"min widget value is 0.25"
+		)
 		
+		assert(
+			widget_prices <= n_widg * 1,
+			"max widget value is 1"
+		)
+		
+		assert(
+			widget_prices > producer_prices * w_per_p,
+			"producers always price widgets above their min_price"
+		)
+
 		const first_iter = market.last_market_iteration()
 		assert(
-			first_iter.total_surplus() < 100,
+			first_iter.total_surplus() > 0,
+			"no surplus is vanishingly improbable"
+		)
+		assert(
+			first_iter.total_surplus() < n_cons,
 			"surplus of more than 1 per consumer is impossible"
+		)
+
+		for (let i = 100; i > 0; --i){
+			market.iterate_market()
+		}
+		const final_iter = market.last_market_iteration()
+		debugger
+		assert(
+			first_iter.total_surplus() < final_iter.total_surplus(),
+			"vanishingly improbable for total surplus not to increase"
 		)
 	},
 }

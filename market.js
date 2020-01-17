@@ -16,7 +16,7 @@ const shuffle_inplace = (array) => {
 
 const wiggle = (n, amt) => {
 	const m = amt === null ? 0.1 : amt
-	n + rand(-m, m) * n
+	return n + rand(-m, m) * n
 }
 
 class Consumer{
@@ -98,11 +98,13 @@ const naive_sales = ({consumers, widgets}) => {
 	const shuffled_consumers = Object.values(consumers)
 	shuffle_inplace(shuffled_consumers)
 
+	if (shuffled_consumers.length === 0 || sorted_widgets.length === 0)
+		return []
+
 	const sales = []
 
 	shuffled_consumers.forEach((consumer) => {
 		const last_widget = sorted_widgets.pop()
-
 		if (last_widget.price <= consumer.max_price) {
 			sales.push(new Sale({
 				consumer: consumer,
@@ -118,7 +120,7 @@ const naive_sales = ({consumers, widgets}) => {
 
 const producer_sales_summary = ({widgets, sales}) => {
 	const producer_data = {}
-	widgets.forEach(widget => {
+	Object.values(widgets).forEach(widget => {
 		const producer = widget.producer
 		const pid = producer.id
 		producer_data[pid] = producer_data[pid] || {
@@ -140,7 +142,6 @@ const producer_sales_summary = ({widgets, sales}) => {
 const naive_pricing = ({widgets, sales, next_id}) => {
 	// for each producer, create a new inventory
 	let id = next_id
-
 
 	const producer_data = producer_sales_summary({widgets, sales})
 	const new_widgets = []
@@ -215,19 +216,9 @@ class Marketplace{
 			this.producers[this.idx] = this.index[this.idx]
 		}
 
-		Object.values(this.producers).forEach((producer) => {
-			// default to value-based pricing @ 25% markup
-			//	wiggle adds +/- 10%
-			const price = Math.min(wiggle(producer.min_price * 1.25), 1)
-			stop = this.idx + widgets_per_producer
-			for (; this.idx < stop; this.idx++) {
-				this.index[this.idx] = new Widget({
-					id: this.idx, 
-					producer: producer, 
-					price: price
-				})
-				this.widgets[this.idx] = this.index[this.idx]
-			}
+		this.widgets = this.producer_starting_inventory({
+			producers: this.producers,
+			widgets_per_producer: this.widgets_per_producer,
 		})
 
 		this.market_iterations.push(
@@ -246,12 +237,51 @@ class Marketplace{
 		// console.log('market_iterations', this.market_iterations)
 	}
 
+	producer_starting_inventory({producers, widgets_per_producer}) {
+		const widgets = {}
+		Object.values(producers).forEach((producer) => {
+			// default to value-based pricing @ 25% markup
+			//	wiggle adds +/- 10%
+			const price = Math.min(wiggle(producer.min_price * 1.25), 1)
+			const stop = this.idx + widgets_per_producer
+			for (; this.idx < stop; this.idx++) {
+				this.index[this.idx] = new Widget({
+					id: this.idx, 
+					producer: producer, 
+					price: price,
+				})
+				widgets[this.idx] = this.index[this.idx]
+			}
+		})
+		return widgets
+	}
+
 	last_market_iteration() {
 		return this.market_iterations[this.market_iterations.length - 1]
 	}
 
 	iterate_market() {
+		const last_iter = this.last_market_iteration()
+		const last_widgets = last_iter.widgets
+		const last_sales = last_iter.sales
 
+		let next_inventory = naive_pricing({
+			widgets: last_widgets,
+			sales: last_sales,
+			id: this.idx,
+		})
+
+		Object.assign(this.index, next_inventory)
+		Object.assign(this.widgets, next_inventory)
+		this.idx += next_inventory.length
+
+		const next_market_iter = new MarketIteration({
+			gen: last_iter.gen + 1, 
+			producers: this.producers, 
+			consumers: this.consumers, 
+			widgets: next_inventory, 
+			sales_fn: this.sales_fn,
+		})
 	}
 
 	replenish_inventory() {
@@ -270,4 +300,3 @@ export {
 	naive_sales,
 	naive_pricing,
 }
-
